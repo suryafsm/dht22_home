@@ -1,0 +1,8 @@
+streamlit>=1.33
+pandas
+numpy
+plotly
+influxdb3-python
+groq
+scikit-learn
+statsmodels
