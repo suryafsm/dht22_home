@@ -485,8 +485,8 @@ def plot_combined_dual_axis(df, title_prefix=""):
         margin=dict(l=10, r=10, t=45, b=10),
         plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)",
         legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
-        yaxis=dict(title="Suhu (°C)", titlefont=dict(color="#EF4444"), tickfont=dict(color="#EF4444")),
-        yaxis2=dict(title="Kelembaban (%)", titlefont=dict(color="#38BDF8"), tickfont=dict(color="#38BDF8"),
+        yaxis=dict(title=dict(text="Suhu (°C)", font=dict(color="#EF4444")), tickfont=dict(color="#EF4444")),
+        yaxis2=dict(title=dict(text="Kelembaban (%)", font=dict(color="#38BDF8")), tickfont=dict(color="#38BDF8"),
                     overlaying="y", side="right", showgrid=False),
     )
     return fig
@@ -1110,9 +1110,7 @@ with st.sidebar:
 
     st.divider()
     st.caption(f"🕐 {now_wib().strftime('%H:%M:%S')} WIB")
-    st.divider()
-    st.caption("Suryasatriya © 2026")
-        
+    st.caption("Suryasatriya ©2026")
 
 
 # ============================================================================
@@ -1471,6 +1469,6 @@ with tab_pred:
 # ============================================================================
 st.markdown("---")
 f1, f2, f3 = st.columns(3)
-f1.caption("📊 Location: Kel. Tegalrejo, Kec. Argomulyo, Kota Salatiga, Jawa Tengah, Indonesia")
-f2.caption("⚡ Powered by Streamlit, Plotly, Pandas, InfluxDB Cloud, OpenAI GPT-OSS-20B")
+f1.caption("📊 Measurement: tas_ai_2026")
+f2.caption("⚡ Data dari InfluxDB Cloud")
 f3.caption(f"🔄 {now_wib().strftime('%Y-%m-%d %H:%M:%S')} WIB")
