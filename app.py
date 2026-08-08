@@ -25,6 +25,7 @@ import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
+import requests
 import streamlit as st
 from influxdb_client_3 import InfluxDBClient3
 from groq import Groq
@@ -158,10 +159,38 @@ _defaults = {
     "n_data": 100,
     "interval_label": "5 menit",
     "time_label": "5 jam (rata-rata 5 menit)",
+    "visitor_count": None,
+    "_visit_counted": False,
 }
 for k, v in _defaults.items():
     if k not in st.session_state:
         st.session_state[k] = v
+
+
+# ============================================================================
+# COUNTER PENGUNJUNG (publik, gratis, tanpa API key — CounterAPI v1)
+# ============================================================================
+# Setiap sesi browser baru (tab/reload) akan menambah counter tepat SEKALI,
+# ditandai lewat session_state agar tidak ikut bertambah tiap kali ada
+# interaksi widget yang men-trigger rerun Streamlit.
+_VISITOR_COUNTER_NAMESPACE = "dht22-tegalrejo-salatiga"
+_VISITOR_COUNTER_NAME = "dashboard-views"
+
+
+def _bump_visitor_counter():
+    try:
+        url = f"https://api.counterapi.dev/v1/{_VISITOR_COUNTER_NAMESPACE}/{_VISITOR_COUNTER_NAME}/up"
+        r = requests.get(url, timeout=3)
+        if r.status_code == 200:
+            return r.json().get("count")
+    except Exception:
+        pass
+    return None
+
+
+if not st.session_state._visit_counted:
+    st.session_state.visitor_count = _bump_visitor_counter()
+    st.session_state._visit_counted = True
 
 # ============================================================================
 # KONEKSI KE DATABASE
@@ -1110,6 +1139,8 @@ with st.sidebar:
 
     st.divider()
     st.caption(f"🕐 {now_wib().strftime('%H:%M:%S')} WIB")
+    if st.session_state.visitor_count is not None:
+        st.caption(f"👁️ Total Kunjungan: {st.session_state.visitor_count:,}".replace(",", "."))
     st.caption("Suryasatriya ©2026")
 
 
