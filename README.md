@@ -16,6 +16,7 @@ di sini lengkap dengan analisis dan prediksi.
 
 Streamlit · Plotly · InfluxDB · statsmodels · scikit-learn
 
----
+https://dht22home-suryafsm.streamlit.app/
+
 
 *Proyek monitoring IoT — data sensor lingkungan Tegalrejo, Argomulyo, Salatiga.*

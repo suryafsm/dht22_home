@@ -168,21 +168,46 @@ for k, v in _defaults.items():
 
 
 # ============================================================================
-# COUNTER PENGUNJUNG (publik, gratis, tanpa API key — CounterAPI v1)
+# COUNTER PENGUNJUNG (CounterAPI v2 — perlu API token, disimpan di secrets)
 # ============================================================================
 # Setiap sesi browser baru (tab/reload) akan menambah counter tepat SEKALI,
 # ditandai lewat session_state agar tidak ikut bertambah tiap kali ada
 # interaksi widget yang men-trigger rerun Streamlit.
-_VISITOR_COUNTER_NAMESPACE = "dht22-tegalrejo-salatiga"
-_VISITOR_COUNTER_NAME = "dashboard-views"
+_COUNTERAPI_WORKSPACE = "dht22-suryafsm"
+_COUNTERAPI_NAME = "first-counter-4967"
+
+
+def _extract_counter_value(data):
+    """Parsing defensif — CounterAPI v2 kadang membungkus nilai counter
+    dengan nama field yang sedikit berbeda tergantung endpoint/versi client
+    (mis. 'value' vs 'count', ada yang dibungkus di dalam 'data')."""
+    if not isinstance(data, dict):
+        return None
+    for path in (("value",), ("count",), ("data", "value"), ("data", "count")):
+        node = data
+        for key in path:
+            if isinstance(node, dict) and key in node:
+                node = node[key]
+            else:
+                node = None
+                break
+        if isinstance(node, (int, float)):
+            return int(node)
+    return None
 
 
 def _bump_visitor_counter():
     try:
-        url = f"https://api.counterapi.dev/v1/{_VISITOR_COUNTER_NAMESPACE}/{_VISITOR_COUNTER_NAME}/up"
-        r = requests.get(url, timeout=3)
+        token = st.secrets.get("COUNTERAPI_TOKEN")
+    except Exception:
+        token = None
+    if not token:
+        return None  # fitur counter dilewati diam-diam kalau token belum diisi
+    try:
+        url = f"https://api.counterapi.dev/v2/{_COUNTERAPI_WORKSPACE}/{_COUNTERAPI_NAME}/up"
+        r = requests.get(url, headers={"Authorization": f"Bearer {token}"}, timeout=3)
         if r.status_code == 200:
-            return r.json().get("count")
+            return _extract_counter_value(r.json())
     except Exception:
         pass
     return None
@@ -1500,6 +1525,6 @@ with tab_pred:
 # ============================================================================
 st.markdown("---")
 f1, f2, f3 = st.columns(3)
-f1.caption("📊 Measurement: tas_ai_2026")
-f2.caption("⚡ Data dari InfluxDB Cloud")
+f1.caption("📊 Measurement: Tegalrejo, Argomulyo, Salatiga")
+f2.caption("⚡ Datane seka dht22 ning omahku")
 f3.caption(f"🔄 {now_wib().strftime('%Y-%m-%d %H:%M:%S')} WIB")
