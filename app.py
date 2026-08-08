@@ -179,10 +179,21 @@ _COUNTERAPI_NAME = "first-counter-4967"
 
 
 def _extract_counter_value(data):
-    """Parsing tangguh (recursive) — cari nilai counter di JSON apapun
-    bentuknya/berapa pun kedalaman nesting-nya, dengan mengecek nama field
-    yang paling umum dipakai CounterAPI ('value', 'count', dst)."""
-    keys_priority = ("value", "count", "current", "total", "counter_value")
+    """Parsing nilai counter dari respons CounterAPI v2.
+
+    Bentuk resmi v2: {"code":"200","data":{"up_count": N, "down_count": M, ...}}
+    Nilai counter yang sebenarnya = up_count - down_count. Kalau suatu saat
+    bentuknya beda, fallback ke pencarian rekursif field umum lainnya."""
+    if isinstance(data, dict):
+        node = data.get("data", data)
+        if isinstance(node, dict) and "up_count" in node:
+            up = node.get("up_count", 0)
+            down = node.get("down_count", 0)
+            if isinstance(up, (int, float)) and not isinstance(up, bool):
+                down = down if isinstance(down, (int, float)) and not isinstance(down, bool) else 0
+                return int(up) - int(down)
+
+    keys_priority = ("value", "count", "current", "total", "counter_value", "up_count")
 
     def search(node):
         if isinstance(node, dict):
@@ -1558,6 +1569,6 @@ with tab_pred:
 # ============================================================================
 st.markdown("---")
 f1, f2, f3 = st.columns(3)
-f1.caption("📊 Measurement: Tegalrejo, Argomulyo, Salatiga")
-f2.caption("⚡ Salam dari Pepe, Leo, Milo, Oksi, Tom-tom, Tim-tim, Bobby")
+f1.caption("📊 Pepe: guk-guk")
+f2.caption("⚡ Leo: woof-woof")
 f3.caption(f"🔄 {now_wib().strftime('%Y-%m-%d %H:%M:%S')} WIB")
