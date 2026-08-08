@@ -161,6 +161,7 @@ _defaults = {
     "time_label": "5 jam (rata-rata 5 menit)",
     "visitor_count": None,
     "_visit_counted": False,
+    "_visitor_debug": "",
 }
 for k, v in _defaults.items():
     if k not in st.session_state:
@@ -178,39 +179,67 @@ _COUNTERAPI_NAME = "first-counter-4967"
 
 
 def _extract_counter_value(data):
-    """Parsing defensif — CounterAPI v2 kadang membungkus nilai counter
-    dengan nama field yang sedikit berbeda tergantung endpoint/versi client
-    (mis. 'value' vs 'count', ada yang dibungkus di dalam 'data')."""
-    if not isinstance(data, dict):
+    """Parsing tangguh (recursive) — cari nilai counter di JSON apapun
+    bentuknya/berapa pun kedalaman nesting-nya, dengan mengecek nama field
+    yang paling umum dipakai CounterAPI ('value', 'count', dst)."""
+    keys_priority = ("value", "count", "current", "total", "counter_value")
+
+    def search(node):
+        if isinstance(node, dict):
+            for k in keys_priority:
+                if k in node and isinstance(node[k], (int, float)) and not isinstance(node[k], bool):
+                    return int(node[k])
+            for v in node.values():
+                res = search(v)
+                if res is not None:
+                    return res
+        elif isinstance(node, list):
+            for v in node:
+                res = search(v)
+                if res is not None:
+                    return res
         return None
-    for path in (("value",), ("count",), ("data", "value"), ("data", "count")):
-        node = data
-        for key in path:
-            if isinstance(node, dict) and key in node:
-                node = node[key]
-            else:
-                node = None
-                break
-        if isinstance(node, (int, float)):
-            return int(node)
-    return None
+
+    return search(data)
 
 
 def _bump_visitor_counter():
+    """Naikkan counter (endpoint /up) lalu baca nilai TERKINI lewat endpoint
+    baca terpisah (tanpa /up) — CounterAPI v2 pakai cache buffering, jadi
+    respons /up sendiri belum tentu langsung membawa nilai terbaru."""
     try:
         token = st.secrets.get("COUNTERAPI_TOKEN")
     except Exception:
         token = None
     if not token:
-        return None  # fitur counter dilewati diam-diam kalau token belum diisi
+        st.session_state["_visitor_debug"] = "COUNTERAPI_TOKEN belum diisi di secrets"
+        return None
+
+    headers = {"Authorization": f"Bearer {token}"}
+    base_url = f"https://api.counterapi.dev/v2/{_COUNTERAPI_WORKSPACE}/{_COUNTERAPI_NAME}"
+
+    r_up = None
     try:
-        url = f"https://api.counterapi.dev/v2/{_COUNTERAPI_WORKSPACE}/{_COUNTERAPI_NAME}/up"
-        r = requests.get(url, headers={"Authorization": f"Bearer {token}"}, timeout=3)
-        if r.status_code == 200:
-            return _extract_counter_value(r.json())
-    except Exception:
-        pass
-    return None
+        r_up = requests.get(f"{base_url}/up", headers=headers, timeout=5)
+        up_dbg = f"UP {r_up.status_code}: {r_up.text[:200]}"
+    except Exception as e:
+        up_dbg = f"UP error: {e}"
+
+    r_get = None
+    try:
+        r_get = requests.get(base_url, headers=headers, timeout=5)
+        get_dbg = f"GET {r_get.status_code}: {r_get.text[:200]}"
+    except Exception as e:
+        get_dbg = f"GET error: {e}"
+
+    st.session_state["_visitor_debug"] = f"{up_dbg} | {get_dbg}"
+
+    val = _extract_counter_value(r_get.json()) if (r_get is not None and r_get.status_code == 200) else None
+    if val is None and r_up is not None and r_up.status_code == 200:
+        val = _extract_counter_value(r_up.json())  # fallback kalau /up ternyata sudah bawa nilainya juga
+    if val is None:
+        st.session_state["_visitor_debug"] += " — gagal parsing nilai dari kedua respons di atas"
+    return val
 
 
 if not st.session_state._visit_counted:
@@ -1165,7 +1194,11 @@ with st.sidebar:
     st.divider()
     st.caption(f"🕐 {now_wib().strftime('%H:%M:%S')} WIB")
     if st.session_state.visitor_count is not None:
-        st.caption(f"👁️ Total Kunjungan: {st.session_state.visitor_count:,}".replace(",", "."))
+        st.caption(f"cnt={st.session_state.visitor_count}")
+    else:
+        st.caption("cnt=?")
+        if st.session_state._visitor_debug:
+            st.caption(f"⚠️ {st.session_state._visitor_debug}")
     st.caption("Suryasatriya ©2026")
 
 
@@ -1526,5 +1559,5 @@ with tab_pred:
 st.markdown("---")
 f1, f2, f3 = st.columns(3)
 f1.caption("📊 Measurement: Tegalrejo, Argomulyo, Salatiga")
-f2.caption("⚡ Datane seka dht22 ning omahku")
+f2.caption("⚡ Salam dari Pepe, Leo, Milo, Oksi, Tom-tom, Tim-tim, Bobby")
 f3.caption(f"🔄 {now_wib().strftime('%Y-%m-%d %H:%M:%S')} WIB")
